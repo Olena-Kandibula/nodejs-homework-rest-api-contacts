@@ -29,3 +29,16 @@
 - `npm run start:dev` &mdash; старт сервера в режиме разработки (development)
 - `npm run lint` &mdash; запустить выполнение проверки кода с eslint, необходимо выполнять перед каждым PR и исправлять все ошибки линтера
 - `npm lint:fix` &mdash; та же проверка линтера, но с автоматическими исправлениями простых ошибок
+
+hw04 - auth
+-1.app.js add new route - app.use('/api/auth', authRouter)
+-2. ./routes/api/auth create router.post('/register', async (req, res, nex) => {......});
+-3. create model User
+
+-Для засолки паролей используй bcryptjs
+npm i bcryptjs
+
+-4. создать токен
+-4.1 npm i jsonwebtoken
+-4.2 SECRET_KEY in .env
+-4.3 const { SECRET_KEY } = process.env; in auth.js

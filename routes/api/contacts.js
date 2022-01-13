@@ -6,19 +6,27 @@ const { NotFound, BadRequest } = require('http-errors');
 const { schemaAdd, schemaUpdate, schemaUpdateFavorite } = require('../../model/contacts/joi-schemas');
 
 const {Contact} = require('../../model');
+const { authenticate } = require('../../middlewares');
 
 
-
-router.get('/', async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {     
-    const contacts = await Contact.find();    
+    const { _id } = req.user;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+    
+    const contacts = await Contact.find(
+      { owner: _id },
+      '_id name email phone favorite',
+      { skip, limit: +limit },
+    );    
     res.json(contacts)   
  } catch (error) {
     next(error);
   }
 })
 
-router.get('/:contactId', async (req, res, next) => {
+router.get('/:contactId', authenticate, async (req, res, next) => {
   const { contactId } = req.params;
 
   try {
@@ -41,7 +49,7 @@ router.get('/:contactId', async (req, res, next) => {
 });
   
 
-router.post('/', async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   try {    
     const body = req.body;    
     
@@ -53,8 +61,10 @@ router.post('/', async (req, res, next) => {
      if (!Object.keys(body).includes('favorite')) {
        body.favorite = false;        
     }
-    const contact = await Contact.create(body);  
-     res.status(201).json(contact)
+
+    const { _id } = req.user;
+    const newContact = await Contact.create({ ...req.body, owner: _id });
+    res.status(201).json(newContact);
 
   } catch (error) {
     if (error.message.includes('validation failed')) {
@@ -65,7 +75,7 @@ router.post('/', async (req, res, next) => {
   }
 })
 
-router.delete('/:contactId', async (req, res, next) => {
+router.delete('/:contactId', authenticate, async (req, res, next) => {
   const { contactId } = req.params;
   
   try {
@@ -80,7 +90,7 @@ router.delete('/:contactId', async (req, res, next) => {
   }  
 })
 
-router.put('/:contactId', async (req, res, next) => {
+router.put('/:contactId', authenticate, async (req, res, next) => {
   const { contactId } = req.params;  
   const body = req.body;    
   const result = schemaUpdate.validate(body);
@@ -102,7 +112,7 @@ router.put('/:contactId', async (req, res, next) => {
   
 })
 
-router.patch('/:contactId/favorite', async (req, res, next) => {
+router.patch('/:contactId/favorite', authenticate, async (req, res, next) => {
  
   const { contactId } = req.params;   
   const body = req.body;  

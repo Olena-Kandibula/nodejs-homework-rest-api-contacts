@@ -12,10 +12,13 @@ const contactSchema = Schema({
     type: String,
   },
   favorite: {
-      type: Boolean,
-      enum: [false, true],
+      type: Boolean,      
     default: false,
-  }
+  },
+  owner: {
+    type: Schema.Types.ObjectId,
+    ref: 'user',
+  },
 })
 
 const Contact = model('contact', contactSchema);
