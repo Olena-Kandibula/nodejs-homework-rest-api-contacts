@@ -1,11 +1,16 @@
 const express = require('express');
 const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const fs = require("fs/promises");
+const gravatar = require('gravatar');
+const Jimp = require('jimp');
 
 const { SECRET_KEY } = process.env;
+
 const { User } = require('../../model');
 const { joiRegisterSchema, joiLoginSchema } = require('../../model/user');
-const { authenticate } = require('../../middlewares');
+const { authenticate, upload } = require('../../middlewares');
 
 const router = express.Router();
 
@@ -47,11 +52,19 @@ router.post('/signup', async (req, res, next) => {
        
         const salt = await bcrypt.genSalt(10);
         const hashPassword = await bcrypt.hash(password, salt);
-        const newUser = await User.create({ email, password: hashPassword});
+
+        const avatarURL = gravatar.url(email);
+
+        const newUser = await User.create({
+            email,
+            password: hashPassword,
+            avatarURL,
+        });
         res.status(201).json({
             user: {                
                 email: newUser.email,
-                subscription: "starter"
+                subscription: "starter",
+                
             }
         })
     } catch (error) {
@@ -105,6 +118,35 @@ router.post('/login', async (req, res, next) => {
     }    
 });
 
+const avatarsDir = path.join(__dirname, '../../', 'public','avatars');
+
+router.patch('/avatars', authenticate, upload.single('avatar'),
+    async (req, res, next) => {
+        try {
+            const { path: tempUpload, filename } = req.file;
+
+             async function resize(path, name) {
+              const avatar = await Jimp.read(`${path}`);
+               avatar.resize(250, 250);
+               avatar.write(`${path}`);
+              return name.split('.').reverse();
+            }
+            const [extension] = await resize(tempUpload, filename);
+            // const [extension] = filename.split(".").reverse();
+            console.log("path: tempUpload", tempUpload)
+            const newFileName = `${req.user._id}.${extension}`;
+            const fileUpload = path.join(avatarsDir, newFileName);
+            await fs.rename(tempUpload, fileUpload);
+            const avatarURL = path.join('avatars', newFileName)
+            await User.findByIdAndUpdate(req.user._id, { avatarURL }, { new: true })
+            
+            res.json({ avatarURL })
+
+          
+      } catch (error) {
+          next(error)
+      }
+    })
 
 
 
